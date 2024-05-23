@@ -1,0 +1,20 @@
+credentials:
+  usernames:
+    Hardy:
+      email: hardy@example.com
+      failed_login_attempts: 0
+      logged_in: False
+      name: Hardy
+      password: Hazchat.2024
+    Cosch:
+      email: cosch@example.com
+      failed_login_attempts: 0
+      logged_in: False
+      name: Cosch
+      password: Hazchat.2024
+cookie:
+  expiry_days: 30
+  key: some_signature_key  # Must be string
+  name: hazchat-auth
+pre-authorized:
+  emails: []
