@@ -48,8 +48,6 @@ def main():
     name, authentication_status, username = authenticator.login(location='main')
     if authentication_status:
         authenticator.logout('Logout', 'sidebar')
-        st.write(f'Welcome *{name}*')
-        st.title('HazChat')
 
         # Display the logo
         st.image("hazchat.png", width=200)  # Display the logo at 200 pixels width
