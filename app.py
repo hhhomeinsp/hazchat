@@ -97,7 +97,7 @@ def main():
         # Convert the image to a base64 string
         img_base64 = get_base64_image("image.png")  # Ensure the image is in the same directory as this script
 
-        # Add custom HTML/CSS for the input container with styling
+        # Chat input section
         st.markdown("""
         <style>
         .input-container {
@@ -135,54 +135,39 @@ def main():
         </style>
         """, unsafe_allow_html=True)
 
-        st.markdown(f"""
-        <div class="input-container">
-            <input type="text" id="user_input" name="user_input" placeholder="Describe your hazmat incident..." style="width: 100%;">
-            <button id="submit_button" type="button">
-                <img src="data:image/png;base64,{img_base64}" style="width: 24px; height: 24px;">
-            </button>
-        </div>
-        <script>
-        const submitButton = document.getElementById('submit_button');
-        const userInput = document.getElementById('user_input');
-        submitButton.addEventListener('click', function() {{
-            window.sessionStorage.setItem('user_input', userInput.value);
-            window.location.reload();
-        }});
-        </script>
-        """, unsafe_allow_html=True)
+        user_input = st.text_input("Describe your hazmat incident...", key="user_input")
 
-        if 'user_input' in st.session_state and st.session_state['user_input']:
-            user_input = st.session_state['user_input']
-            # Prepare the payload
-            payload = {"question": user_input}
+        if st.button("Submit"):
+            if user_input:
+                # Prepare the payload
+                payload = {"question": user_input}
 
-            # If a file is uploaded, include the image in the payload
-            if uploaded_file is not None:
-                image = Image.open(uploaded_file)
-                buffered = io.BytesIO()
-                image.save(buffered, format="PNG")
-                img_str = buffered.getvalue()
-                payload["image"] = img_str.hex()
+                # If a file is uploaded, include the image in the payload
+                if uploaded_file is not None:
+                    image = Image.open(uploaded_file)
+                    buffered = io.BytesIO()
+                    image.save(buffered, format="PNG")
+                    img_str = buffered.getvalue()
+                    payload["image"] = img_str.hex()
 
-            # If a camera image is captured, include it in the payload
-            if st.session_state["camera_activated"] and camera_input:
-                camera_image = Image.open(camera_input)
-                buffered = io.BytesIO()
-                camera_image.save(buffered, format="PNG")
-                img_str = buffered.getvalue()
-                payload["image"] = img_str.hex()
+                # If a camera image is captured, include it in the payload
+                if st.session_state["camera_activated"] and camera_input:
+                    camera_image = Image.open(camera_input)
+                    buffered = io.BytesIO()
+                    camera_image.save(buffered, format="PNG")
+                    img_str = buffered.getvalue()
+                    payload["image"] = img_str.hex()
 
-            # Query the API with user's input
-            output = query(payload)
+                # Query the API with user's input
+                output = query(payload)
 
-            # Display the response
-            if output:
-                st.write("Chatbot Response:")
-                response_text = output.get("text", "No response received.")
-                st.markdown(response_text.replace("\\n", "\n"))
-            else:
-                st.write("No response received from the server.")
+                # Display the response
+                if output:
+                    st.write("Chatbot Response:")
+                    response_text = output.get("text", "No response received.")
+                    st.markdown(response_text.replace("\\n", "\n"))
+                else:
+                    st.write("No response received from the server.")
     
     elif authentication_status == False:
         st.error('Username/password is incorrect')
