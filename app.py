@@ -7,6 +7,7 @@ from PIL import Image
 import io
 import base64
 import time
+import os
 
 # Set the page configuration
 st.set_page_config(page_title="HazChat", page_icon="hazchaticon.png")
@@ -39,9 +40,8 @@ def query(payload):
         st.error(f"Other error occurred: {err}")
         return None
 
-def get_base64_image(image_path):
-    with open(image_path, "rb") as img_file:
-        return base64.b64encode(img_file.read()).decode("utf-8")
+def load_reference_materials():
+    return ["dot_placards.jpg"]
 
 # Streamlit app
 def main():
@@ -49,16 +49,30 @@ def main():
     if authentication_status:
         authenticator.logout('Logout', 'sidebar')
 
+        # Initialize session states if not already set
+        if "camera_activated" not in st.session_state:
+            st.session_state["camera_activated"] = False
+        if "take_snapshots" not in st.session_state:
+            st.session_state["take_snapshots"] = False
+        if "ref_button" not in st.session_state:
+            st.session_state["ref_button"] = False
+        if "image_paths" not in st.session_state:
+            st.session_state["image_paths"] = []
+
         # Display the logo
         st.image("hazchat.png", width=200)  # Display the logo at 200 pixels width
-
         st.write("Helping emergency responders with hazardous material incidents.")
 
         # Sidebar for additional functionalities
         st.sidebar.header("Additional Options")
 
-        # File uploader for photo in the sidebar
-        uploaded_file = st.sidebar.file_uploader("Upload a photo of your hazmat incident (optional):", type=["jpg", "jpeg", "png"])
+        # Add a dropdown to select reference materials
+        image_options = load_reference_materials()
+        selected_image = st.sidebar.selectbox("Select Reference Material", image_options)
+        show_image = st.sidebar.toggle("Show Image", value=True)
+
+        if selected_image and show_image:
+            st.image(selected_image, use_column_width=True)
 
         # Initialize session states if not already set
         if "camera_activated" not in st.session_state:
@@ -66,12 +80,13 @@ def main():
         if "take_snapshots" not in st.session_state:
             st.session_state["take_snapshots"] = False
 
-        # Camera activation using toggle buttons
-        camera_activated = st.sidebar.radio("Activate Camera", ["Off", "On"], index=1 if st.session_state["camera_activated"] else 0)
-        st.session_state["camera_activated"] = camera_activated == "On"
+        # Camera activation using toggle switch
+        st.session_state["camera_activated"] = st.sidebar.toggle("Activate Camera", value=st.session_state["camera_activated"])
 
-        take_snapshots = st.sidebar.radio("Start Periodic Snapshots", ["Off", "On"], index=1 if st.session_state["take_snapshots"] else 0)
-        st.session_state["take_snapshots"] = take_snapshots == "On"
+        # Start Periodic Snapshots using toggle switch
+        st.session_state["take_snapshots"] = st.sidebar.toggle("Start Periodic Snapshots", value=st.session_state["take_snapshots"])
+
+
 
         if st.session_state["camera_activated"]:
             # Camera input for periodic snapshots
@@ -86,89 +101,40 @@ def main():
                     buffered = io.BytesIO()
                     camera_image.save(buffered, format="PNG")
                     img_str = buffered.getvalue()
-                    payload["image"] = img_str.hex()
+                    payload = {"image": img_str.hex()}
 
                     # Display the snapshot
                     st.image(camera_image, caption="Snapshot taken at: " + time.strftime("%Y-%m-%d %H:%M:%S"), use_column_width=True)
-                
+
                     # Periodic snapshots every 5 seconds
                     time.sleep(5)
 
-        # Convert the image to a base64 string
-        img_base64 = get_base64_image("image.png")  # Ensure the image is in the same directory as this script
+        prompt = st.chat_input("Describe your hazmat incident...")
+        if prompt:
+            st.write(f"User has sent the following prompt: {prompt}")
 
-        # Chat input section
-        st.markdown("""
-        <style>
-        .input-container {
-            display: flex;
-            align-items: center;
-            background-color: #f0f0f5;
-            border-radius: 30px;
-            padding: 10px;
-        }
-        .input-container input {
-            flex: 1;
-            border: none;
-            background-color: #f0f0f5;
-            border-radius: 10px;
-            padding: 10px;
-            margin-right: 10px;
-        }
-        .input-container input:focus {
-            outline: none;
-        }
+            # Prepare the payload
+            payload = {"question": prompt}
 
-        .input-container button {
-            background-color: transparent;
-            border: none;
-            cursor: pointer;
-        }
-        @media only screen and (max-width: 600px) {
-            .input-container {
-                flex-direction: column;
-            }
-            .input-container input {
-                margin-bottom: 10px;
-            }
-        }
-        </style>
-        """, unsafe_allow_html=True)
+            # If a file is uploaded, include the image in the payload
+            if uploaded_file is not None:
+                image = Image.open(uploaded_file)
+                buffered = io.BytesIO()
+                image.save(buffered, format="PNG")
+                img_str = buffered.getvalue()
+                payload["image"] = img_str.hex()
 
-        user_input = st.text_input("Describe your hazmat incident...", key="user_input")
+            # Query the API with user's input
+            output = query(payload)
 
-        if st.button("Submit"):
-            if user_input:
-                # Prepare the payload
-                payload = {"question": user_input}
+            # Display the response
+            if output:
+                st.write("Chatbot Response:")
+                response_text = output.get("text", "No response received.")
+                st.markdown(response_text.replace("\\n", "\n"))
+            else:
+                st.write("No response received from the server.")
 
-                # If a file is uploaded, include the image in the payload
-                if uploaded_file is not None:
-                    image = Image.open(uploaded_file)
-                    buffered = io.BytesIO()
-                    image.save(buffered, format="PNG")
-                    img_str = buffered.getvalue()
-                    payload["image"] = img_str.hex()
-
-                # If a camera image is captured, include it in the payload
-                if st.session_state["camera_activated"] and camera_input:
-                    camera_image = Image.open(camera_input)
-                    buffered = io.BytesIO()
-                    camera_image.save(buffered, format="PNG")
-                    img_str = buffered.getvalue()
-                    payload["image"] = img_str.hex()
-
-                # Query the API with user's input
-                output = query(payload)
-
-                # Display the response
-                if output:
-                    st.write("Chatbot Response:")
-                    response_text = output.get("text", "No response received.")
-                    st.markdown(response_text.replace("\\n", "\n"))
-                else:
-                    st.write("No response received from the server.")
-    
     elif authentication_status == False:
         st.error('Username/password is incorrect')
     elif authentication_status == None:
