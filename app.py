@@ -83,10 +83,10 @@ def main():
                 st.image(selected_image, use_column_width=True)
 
         # Camera activation using toggle switch
-        st.session_state["camera_activated"] = st.sidebar.toggle("Activate Camera", value=st.session_state["camera_activated"])
+        st.session_state["camera_activated"] = st.sidebar.checkbox("Activate Camera", value=st.session_state["camera_activated"])
 
         # Start Periodic Snapshots using toggle switch
-        st.session_state["take_snapshots"] = st.sidebar.toggle("Start Periodic Snapshots", value=st.session_state["take_snapshots"])
+        st.session_state["take_snapshots"] = st.sidebar.checkbox("Start Periodic Snapshots", value=st.session_state["take_snapshots"])
 
         if st.session_state["camera_activated"]:
             # Camera input for periodic snapshots
