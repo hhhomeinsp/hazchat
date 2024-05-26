@@ -68,8 +68,8 @@ def main():
 
         # Add a dropdown to select reference materials
         image_options = load_reference_materials()
-        selected_image = st.sidebar.selectbox("Select Reference Material", image_options)
-        show_image = st.sidebar.toggle("Show Image", value=False)
+        selected_image = st.sidebar.selectbox("Select Reference", image_options)
+        show_image = st.sidebar.toggle("Display Reference", value=False)
 
         if selected_image and show_image:
             st.image(selected_image, use_column_width=True)
