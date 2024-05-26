@@ -7,7 +7,7 @@ from PIL import Image
 import io
 import base64
 import time
-import os
+from streamlit_modal import Modal
 
 # Set the page configuration
 st.set_page_config(page_title="HazChat", page_icon="hazchaticon.png")
@@ -58,6 +58,8 @@ def main():
             st.session_state["ref_button"] = False
         if "image_paths" not in st.session_state:
             st.session_state["image_paths"] = []
+        if "chat_history" not in st.session_state:
+            st.session_state["chat_history"] = []
 
         # Display the logo
         st.image("hazchat.png", width=200)  # Display the logo at 200 pixels width
@@ -69,24 +71,22 @@ def main():
         # Add a dropdown to select reference materials
         image_options = load_reference_materials()
         selected_image = st.sidebar.selectbox("Select Reference", image_options)
-        show_image = st.sidebar.toggle("Display Reference", value=False)
+        
+        modal = Modal("Reference Material", key="reference-modal")
+        
+        open_modal = st.sidebar.button("Display Reference")
+        if open_modal:
+            modal.open()
 
-        if selected_image and show_image:
-            st.image(selected_image, use_column_width=True)
-
-        # Initialize session states if not already set
-        if "camera_activated" not in st.session_state:
-            st.session_state["camera_activated"] = False
-        if "take_snapshots" not in st.session_state:
-            st.session_state["take_snapshots"] = False
+        if modal.is_open():
+            with modal.container():
+                st.image(selected_image, use_column_width=True)
 
         # Camera activation using toggle switch
         st.session_state["camera_activated"] = st.sidebar.toggle("Activate Camera", value=st.session_state["camera_activated"])
 
         # Start Periodic Snapshots using toggle switch
         st.session_state["take_snapshots"] = st.sidebar.toggle("Start Periodic Snapshots", value=st.session_state["take_snapshots"])
-
-
 
         if st.session_state["camera_activated"]:
             # Camera input for periodic snapshots
@@ -109,15 +109,20 @@ def main():
                     # Periodic snapshots every 5 seconds
                     time.sleep(5)
 
+        # Display chat history
+        for chat in st.session_state["chat_history"]:
+            st.write(chat)
+
         prompt = st.chat_input("Describe your hazmat incident...")
         if prompt:
+            st.session_state["chat_history"].append(f"User: {prompt}")
             st.write(f"User has sent the following prompt: {prompt}")
 
             # Prepare the payload
             payload = {"question": prompt}
 
             # If a file is uploaded, include the image in the payload
-            if uploaded_file is not None:
+            if 'uploaded_file' in locals() and uploaded_file is not None:
                 image = Image.open(uploaded_file)
                 buffered = io.BytesIO()
                 image.save(buffered, format="PNG")
@@ -129,8 +134,9 @@ def main():
 
             # Display the response
             if output:
-                st.write("Chatbot Response:")
                 response_text = output.get("text", "No response received.")
+                st.session_state["chat_history"].append(f"Chatbot: {response_text}")
+                st.write("Chatbot Response:")
                 st.markdown(response_text.replace("\\n", "\n"))
             else:
                 st.write("No response received from the server.")
