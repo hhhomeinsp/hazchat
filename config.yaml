@@ -13,7 +13,7 @@ credentials:
       name: Cosch
       password: Hazchat.2024
 cookie:
-  expiry_days: 30
+  expiry_days: 300
   key: some_signature_key  # Must be string
   name: hazchat-auth
 pre-authorized:
